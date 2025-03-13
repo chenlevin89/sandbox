@@ -1,0 +1,35 @@
+{{- range $key, $value := .Values.containers }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $key }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ $key }}
+  template:
+    metadata:
+      labels:
+        app: {{ $key }}
+    spec:
+      containers:
+        - name: {{ $key }}
+          image: {{ $value.image.repository }}:{{ $value.image.tag | default "latest" }}
+          ports:
+            - containerPort: {{  $value.ports.port }}
+          {{- if $value.volumeMounts }}
+          volumeMounts:
+            {{- toYaml $value.volumeMounts | nindent 12 }}
+          {{- end }}
+          env:          
+            {{- range $name, $envValue := $value.env }}
+            - name: {{ $name }}
+              value: {{ $envValue | quote }}
+            {{- end }}
+      {{- if $value.volumes }}
+      volumes:
+        {{- toYaml $value.volumes | nindent 8 }}
+      {{- end }}
+{{- end }}

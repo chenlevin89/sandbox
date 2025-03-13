@@ -1,0 +1,47 @@
+containers:
+  mysql:
+    image:
+      repository: mysql
+      tag: latest
+    ports:
+        port: 3306
+        targetPort: 3306
+    env:
+      MYSQL_DATABASE: "main"
+      MYSQL_ALLOW_EMPTY_PASSWORD: "1"
+    volumeMounts:
+      - name: mysql-initdb
+        mountPath: /docker-entrypoint-initdb.d
+    volumes:
+      - name: mysql-initdb
+        configMap:
+          name: mysql-initdb-config
+  
+  web-api:
+    image:
+      repository: chenlevin/argocd-workshop-web-api
+      tag: latest
+    ports:
+        port: 3111
+        targetPort: 3111
+    env:
+      MYSQL_HOST: "mysql"
+      MYSQL_PORT: "3306"
+
+  web-app:
+    image:
+      repository: chenlevin/argocd-workshop-web-app
+      tag: latest
+    ports:
+        port: 4200
+        targetPort: 4200
+    env:
+      PROXY_PATH: "http://web-api:3111"
+
+configMaps:
+  mysql-initdb-config:
+    data:
+      initdb.sql: |
+        USE main;
+        CREATE TABLE main.Tasks(ID int NOT NULL AUTO_INCREMENT, Title varchar(255) NOT NULL, Status TINYINT(1), PRIMARY KEY (ID));
+        INSERT INTO main.Tasks(Title, Status) VALUES ('K8s Fundamentals', 0), ('Helm', 0), ('Argo', 0), ('Gitops', 0);
