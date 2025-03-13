@@ -1,5 +1,6 @@
 containers:
   mysql:
+    replicas: 1
     image:
       repository: mysql
       tag: latest
@@ -18,6 +19,7 @@ containers:
           name: mysql-initdb-config
   
   web-api:
+    replicas: 1
     image:
       repository: chenlevin/argocd-workshop-web-api
       tag: latest
@@ -29,6 +31,7 @@ containers:
       MYSQL_PORT: "3306"
 
   web-app:
+    replicas: 1
     image:
       repository: chenlevin/argocd-workshop-web-app
       tag: latest
