@@ -10,5 +10,5 @@ spec:
   ports:
   - port: {{ $value.ports.port }}
     targetPort: {{ $value.ports.targetPort }}
-  type: ClusterIp
+  type: ClusterIP
 {{- end }}
