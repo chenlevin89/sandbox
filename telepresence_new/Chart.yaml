@@ -1,0 +1,9 @@
+annotations:
+  artifacthub.io/license: Apache-2.0
+apiVersion: v2
+appVersion: 2.21.3
+description: A chart for deploying the server-side components of Telepresence
+icon: https://raw.githubusercontent.com/telepresenceio/telepresence.io/master/src/assets/images/telepresence-edgy.svg
+name: telepresence-oss
+type: application
+version: 2.21.3

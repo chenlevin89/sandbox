@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "traffic-manager.name" $ }}
+  namespace:  {{ include "traffic-manager.namespace" . }}
+data:
+{{- if .Values.client }}
+  client.yaml: |
+    {{- toYaml .Values.client | nindent 4 }}
+{{- end }}
+{{- if .Values.intercept.environment }}
+  agent-env.yaml: |
+    {{- toYaml .Values.intercept.environment | nindent 4 }}
+{{- end }}
