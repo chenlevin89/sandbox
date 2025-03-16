@@ -129,6 +129,14 @@ rules:
   - services
   verbs:
   - create
+- apiGroups: 
+  - ""
+  resources: 
+  - "secrets"
+  verbs: 
+  - "get" 
+  - "list" 
+  - "watch"
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
