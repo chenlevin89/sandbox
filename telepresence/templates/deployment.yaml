@@ -1,3 +1,71 @@
+{{- define "traffic-manager-env" }}
+          - name: SYSTEMA_HOST
+            value: {{ .systemaHost }}
+          - name: SYSTEMA_PORT
+            value: {{ .systemaPort | quote }}
+          - name: INTERCEPT_DISABLE_GLOBAL
+            value: {{ quote (default false .intercept.disableGlobal ) }}
+          - name: INTERCEPT_EXPIRED_NOTIFICATIONS_ENABLED
+            value: {{ default "false" (quote .intercept.expiredNotifications.enabled) }}
+          - name: INTERCEPT_EXPIRED_NOTIFICATIONS_DEADLINE
+            value: {{ default "15m" (quote .intercept.expiredNotifications.deadline) }}
+  {{- with .trafficManager.serviceMesh }}
+    {{- if (eq .type "istio") }}
+          - name: SERVICE_MESH
+            value: "istio"
+    {{- end }}
+  {{- end }}
+  {{- with .agent.envoy }}
+    {{- if .logLevel }}
+          - name: AGENT_ENVOY_LOG_LEVEL
+            value: {{ .logLevel }}
+    {{- end }}
+    {{- if .serverPort }}
+          - name: AGENT_ENVOY_SERVER_PORT
+            value: {{ .serverPort | quote }}
+    {{- end }}
+    {{- if .adminPort }}
+          - name: AGENT_ENVOY_ADMIN_PORT
+            value: {{ .adminPort | quote }}
+    {{- end }}
+    {{- if .httpIdleTimeout }}
+          - name: AGENT_ENVOY_HTTP_IDLE_TIMEOUT
+            value: {{ .httpIdleTimeout }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- define "traffic-manager-mounts" }}
+  {{- if .licenseKey.create }}
+          - name: license
+            mountPath: /home/telepresence
+            readOnly: true
+  {{- end }}
+  {{- if .httpsProxy.rootCATLSSecret }}
+          - name: proxy-ca
+            mountPath: /var/run/secrets/proxy_tls
+            readOnly: true
+  {{- end }}
+{{- end }}
+{{- define "traffic-manager-vols" }}
+  {{- if .licenseKey.create }}
+      - name: license
+        secret:
+          defaultMode: 420
+          secretName: {{ .licenseKey.secret.name }}
+  {{- end }}
+  {{- if .httpsProxy.rootCATLSSecret }}
+      - name: proxy-ca
+        secret:
+          defaultMode: 420
+          secretName: {{ .httpsProxy.rootCATLSSecret }}
+  {{- end }}
+{{- end }}
+{{- /* verify that we either have access to Ambassador Cloud or have a agent.image defined */}}
+{{- with .Values }}
+  {{- if not (or (and .systemaHost .systemaPort) (and .agent.image.name .agent.image.tag) (and .agentInjector.agentImage.name .agentInjector.agentImage.tag)) }}
+    {{- fail "Either systemaHost and systemaPort or agent.image.name and agent.image.tag must be defined" }}
+  {{- end }}
+{{- end }}
 {{- with .Values }}
 {{- if not .rbac.only }}
 apiVersion: apps/v1
@@ -30,9 +98,6 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .podSecurityContext | nindent 8 }}
-      {{- if .hostNetwork }}
-      hostNetwork: true
-      {{- end }}
       containers:
         - name: {{ include "traffic-manager.name" $ }}
           securityContext:
@@ -44,10 +109,6 @@ spec:
           env:
           - name: LOG_LEVEL
             value: {{ .logLevel }}
-          {{- with .image }}
-          - name: REGISTRY
-            value: "{{ .registry }}"
-          {{- end }}
           - name: SERVER_PORT
             value: {{ .apiPort | quote }}
           - name: POD_CIDR_STRATEGY
@@ -56,14 +117,12 @@ spec:
           - name: POD_CIDRS
             value: "{{ join " " . }}"
           {{- end }}
-          {{- if .agentInjector.enabled }}
           - name: MUTATOR_WEBHOOK_PORT
             value: {{ .agentInjector.webhook.port | quote }}
-          - name: AGENT_INJECTOR_SECRET
-          {{- if eq .agentInjector.certificate.accessMethod "mount" }}
-            value: /var/run/secrets/tls
-          {{- else }}
-            value: {{ .agentInjector.secret.name }}
+          {{- with .tracing }}
+          {{- if .grpcPort }}
+          - name: TRACING_GRPC_PORT
+            value: {{ .grpcPort | quote }}
           {{- end }}
           {{- end }}
           {{- with .telepresenceAPI }}
@@ -78,33 +137,11 @@ spec:
             value: {{ .grpc.maxReceiveSize }}
           {{- end }}
           {{- end }}
-          {{- if .workloads }}
-          {{- with .workloads }}
-          - name: ENABLED_WORKLOAD_KINDS
-            value: >-
-              {{- if or (not .deployments) .deployments.enabled }}
-              Deployment
-              {{- end }}
-              {{- if or (not .statefulSets) .statefulSets.enabled }}
-              StatefulSet
-              {{- end }}
-              {{- if or (not .replicaSets) .replicaSets.enabled }}
-              ReplicaSet
-              {{- end }}
-              {{- if and .argoRollouts .argoRollouts.enabled }}
-              Rollout
-              {{- end }}
-          {{- end }}
-          {{- else }}
-          - name: ENABLED_WORKLOAD_KINDS
-            value: Deployment StatefulSet ReplicaSet
-          {{- end }}
-      {{- if .agentInjector.enabled }}
+          - name: AGENT_ARRIVAL_TIMEOUT
+            value: {{ quote (default "30s" .timeouts.agentArrival) }}
         {{- /*
         Traffic agent injector configuration
         */}}
-          - name: AGENT_ARRIVAL_TIMEOUT
-            value: {{ quote (default "30s" .timeouts.agentArrival) }}
           {{- with .agentInjector }}
           - name: AGENT_INJECT_POLICY
             value: {{ .injectPolicy }}
@@ -153,28 +190,19 @@ spec:
           {{- end }}
           {{- end }}
           {{- /* replaced by agent.image.name Retained for backward compatibility */}}
-          {{- if .agentInjector.agentImage.name }}
-          - name: AGENT_IMAGE_NAME
-            value: {{ .agentInjector.agentImage.name }}
+          {{- if $.Values.agentInjector.agentImage.name }}
+          - name: AGENT_IMAGE
+            value: "{{ $.Values.agentInjector.agentImage.name }}:{{ $.Values.agentInjector.agentImage.tag | default $.Chart.AppVersion }}"
           {{- else }}
           {{- if .agent.image.name }}
-          - name: AGENT_IMAGE_NAME
-            value: {{ .agent.image.name }}
-          {{- end }}
-          {{- end }}
-          {{- if .agentInjector.agentImage.tag }}
-          - name: AGENT_IMAGE_TAG
-            value: {{ .agentInjector.agentImage.tag }}
-          {{- else }}
-          {{- if .agent.image.tag }}
-          - name: AGENT_IMAGE_TAG
-            value: {{ .agent.image.tag }}
+          - name: AGENT_IMAGE
+            value: "{{ .agent.image.name }}:{{ .agent.image.tag | default $.Chart.AppVersion }}"
           {{- end }}
           {{- end }}
           {{- /* replaced by agent.image.registry Retained for backward compatibility */}}
-          {{- if .agentInjector.agentImage.registry }}
+          {{- if $.Values.agentInjector.agentImage.registry }}
           - name: AGENT_REGISTRY
-            value: {{ .agentInjector.agentImage.registry }}
+            value: {{ $.Values.agentInjector.agentImage.registry }}
           {{- else }}
           {{- if .agent.image.registry }}
           - name: AGENT_REGISTRY
@@ -187,12 +215,6 @@ spec:
           {{- end }}
           - name: AGENT_IMAGE_PULL_POLICY
             value: {{ .agent.image.pullPolicy }}
-          {{- /* to allow running with no security context, must check against nil - this allows specifying an empty dict for the value */}}
-          {{- if not (eq .agent.securityContext nil) }}
-          - name: AGENT_SECURITY_CONTEXT
-            value: '{{ toJson .agent.securityContext }}'
-          {{- end }}
-      {{- end }}
           {{- if .prometheus.port }}  # 0 is false
           - name: PROMETHEUS_PORT
             value: "{{ .prometheus.port }}"
@@ -256,12 +278,6 @@ spec:
           {{- end }}
           {{- end }}
           {{- end }}
-          {{- with .compatibility }}
-          {{- if .version }}
-          - name: COMPATIBILITY_VERSION
-            value: {{ .version }}
-          {{- end }}
-          {{- end }}
         {{- if and .trafficManager .trafficManager.envTemplate }}
           {{- template "traffic-manager-env" . }}
         {{- end }}
@@ -273,6 +289,10 @@ spec:
           {{- if .prometheus.port }}  # 0 is false
           - name: prometheus
             containerPort: {{ .prometheus.port }}
+          {{- end }}
+          {{- with .tracing }}
+          - name: grpc-trace
+            containerPort: {{ .grpcPort }}
           {{- end }}
           {{- with .livenessProbe }}
           livenessProbe:
@@ -286,25 +306,13 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-      {{- if eq .agentInjector.certificate.accessMethod "mount" }}
           volumeMounts:
-          {{- if .agentInjector.enabled }}
-            - name: tls
-              mountPath: /var/run/secrets/tls
-              readOnly: true
-          {{- end }}
+          - name: tls
+            mountPath: /var/run/secrets/tls
+            readOnly: true
         {{- if and .trafficManager .trafficManager.mountsTemplate }}
           {{- template "traffic-manager-mounts" . }}
         {{- end }}
-      {{- else }}
-        {{- if and .trafficManager .trafficManager.mountsTemplate }}
-          volumeMounts:
-          {{- template "traffic-manager-mounts" . }}
-        {{- end }}
-      {{- end }}
-      {{- with .schedulerName }}
-      schedulerName: {{ . }}
-      {{- end }}
       {{- with .nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -320,23 +328,14 @@ spec:
       {{- with .priorityClassName }}
       priorityClassName: {{ . | quote }}
       {{- end }}
-  {{- if eq .agentInjector.certificate.accessMethod "mount" }}
       volumes:
-        {{- if .agentInjector.enabled }}
-        - name: tls
-          secret:
-            defaultMode: 420
-            secretName: {{ .agentInjector.secret.name }}
-        {{- end }}
+      - name: tls
+        secret:
+          defaultMode: 420
+          secretName: {{ .agentInjector.secret.name }}
     {{- if and .trafficManager .trafficManager.volsTemplate }}
       {{- template "traffic-manager-vols" . }}
     {{- end }}
-  {{- else }}
-    {{- if and .trafficManager .trafficManager.volsTemplate }}
-      volumes:
-      {{- template "traffic-manager-vols" . }}
-    {{- end }}
-  {{- end }}
       serviceAccount: traffic-manager
       serviceAccountName: traffic-manager
 {{- end }}

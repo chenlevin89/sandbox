@@ -30,12 +30,6 @@ rules:
   - list
   - get
   - watch
-- apiGroups:
-  - ""
-  resources:
-  - pods/log
-  verbs:
-  - get
 {{- /* Needed to be able to find the cluster DNS resolver */}}
 - apiGroups:
   - ""
@@ -44,14 +38,12 @@ rules:
   verbs:
   - get
   - list
-{{- if .Values.agentInjector.enabled }}
 - apiGroups:
   - ""
   resources:
   - configmaps
   verbs:
   - create
-{{- end }}
 - apiGroups:
   - ""
   resources:
@@ -60,12 +52,11 @@ rules:
   - list
   - get
   - watch
-{{- if .Values.agentInjector.enabled }}
   - update
   - delete
-{{- end }}
   resourceNames:
   - telepresence-agents
+  - telepresence-intercept-env
 - apiGroups:
   - "apps"
   resources:
@@ -75,23 +66,8 @@ rules:
   verbs:
   - get
   - list
-  - watch
-{{- if .Values.agentInjector.enabled }}
   - patch
-{{- end }}
-{{- if .Values.workloads.argoRollouts.enabled }}
-- apiGroups:
-  - "argoproj.io"
-  resources:
-  - rollouts
-  verbs:
-  - get
-  - list
-  - watch
-{{- if .Values.agentInjector.enabled }}
-  - patch
-{{- end }}
-{{- end }}
+  - update {{/* Only needed for upgrade of older versions */}}
 - apiGroups:
     - "events.k8s.io"
   resources:

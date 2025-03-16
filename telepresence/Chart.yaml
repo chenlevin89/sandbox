@@ -1,9 +1,12 @@
-annotations:
-  artifacthub.io/license: Apache-2.0
 apiVersion: v2
-appVersion: 2.21.3
+appVersion: 2.17.1
+dependencies:
+- condition: ambassador-agent.enabled
+  name: ambassador-agent
+  repository: https://app.getambassador.io/
+  version: ~1.0.0
 description: A chart for deploying the server-side components of Telepresence
-icon: https://raw.githubusercontent.com/telepresenceio/telepresence.io/master/src/assets/images/telepresence-edgy.svg
-name: telepresence-oss
+icon: https://www.getambassador.io/images/logo.png
+name: telepresence
 type: application
-version: 2.21.3
+version: 2.17.1

@@ -1,3 +1,8 @@
+{{- define "clientRbac-ruleExtras" -}}
+- apiGroups: ["getambassador.io"]
+  resources: ["ispecs"]
+  verbs: ["get"]
+{{- end }}
 {{/*
 Expand the name of the chart.
 */}}
@@ -5,12 +10,16 @@ Expand the name of the chart.
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{/*
-Traffic Manager deployment/service name - as of v2.20.3, must be "traffic-manager" to align with code base.
-*/}}
 {{- define "traffic-manager.name" -}}
 {{- $name := default "traffic-manager" }}
+{{- if .Values.isCI }}
 {{- print $name }}
+{{- else }}
+{{- if ne $name .Release.Name }}
+{{- fail "The name of the release MUST BE traffic-manager" }}
+{{- end }}
+{{- printf "%s" .Release.Name }}
+{{- end -}}
 {{- end -}}
 
 {{- /*
@@ -77,17 +86,13 @@ RBAC rules required to create an intercept in a namespace; excludes any rules th
 - apiGroups: [""]
   resources: ["services"]
   verbs: ["list", "watch", "get"]
+# Needed for the gather-traces command
 - apiGroups: [""]
   resources: ["pods/portforward"]
   verbs: ["create"]
 - apiGroups: ["apps"]
   resources: ["deployments", "replicasets", "statefulsets"]
   verbs: ["get", "watch", "list"]
-{{- if and .Values.workloads .Values.workloads.argoRollouts .Values.workloads.argoRollouts.enabled }}
-- apiGroups: ["argoproj.io"]
-  resources: ["rollouts"]
-  verbs: ["get", "watch", "list"]
-{{- end }}
 - apiGroups: [""]
   resources: ["configmaps"]
   resourceNames: ["telepresence-agents"]

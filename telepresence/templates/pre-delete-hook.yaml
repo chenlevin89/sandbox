@@ -1,4 +1,4 @@
-{{- if and (not .Values.rbac.only) .Values.agentInjector.enabled }}
+{{- if not .Values.rbac.only }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -40,7 +40,7 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
             {{- end }}
           image: "{{ .Values.hooks.curl.registry }}/{{ .Values.hooks.curl.image }}:{{ .Values.hooks.curl.tag }}"
-          imagePullPolicy: {{ .Values.hooks.curl.pullPolicy }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           volumeMounts:
             - name: secret-volume
               mountPath: /secret
@@ -58,9 +58,6 @@ spec:
         - name: secret-volume
           secret:
             secretName: {{ .Values.agentInjector.secret.name }}
-      {{- with .Values.schedulerName }}
-      schedulerName: {{ . }}
-      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

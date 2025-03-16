@@ -8,7 +8,7 @@ data:
   client.yaml: |
     {{- toYaml .Values.client | nindent 4 }}
 {{- end }}
-{{- if .Values.intercept.environment }}
-  agent-env.yaml: |
-    {{- toYaml .Values.intercept.environment | nindent 4 }}
+{{- if .Values.trafficManager }}
+  traffic-manager.yaml: |
+    {{- toYaml .Values.trafficManager | nindent 4 }}
 {{- end }}
