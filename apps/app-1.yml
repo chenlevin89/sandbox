@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: test-argocd-application-1
+  namespace: argocd
+  annotations:
+    "argocd.argoproj.io/sync-wave": "0"
+  finalizers: ["resources-finalizer.argocd.argoproj.io"]
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/chenlevin89/sandbox
+      targetRevision: main          
+      path: .
+      helm:
+        values: |
+          containers:
+            web-api:
+              replicas: 1
+              livenessProbe:
+                initialDelaySeconds: 60     
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
