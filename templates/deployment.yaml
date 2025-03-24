@@ -27,6 +27,7 @@ spec:
             {{- range $name, $envValue := $value.env }}
             - name: {{ $name }}
               value: {{ $envValue | quote }}
+            {{- end }}
           {{- if $value.livenessProbe }}
           livenessProbe:
             {{- toYaml $value.livenessProbe | nindent 12 }}
