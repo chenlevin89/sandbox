@@ -10,6 +10,17 @@ containers:
     env:
       MYSQL_DATABASE: "main"
       MYSQL_ALLOW_EMPTY_PASSWORD: "1"
+    livenessProbe:
+      exec:
+        command:
+          - mysqladmin
+          - ping
+          - -h
+          - localhost
+      initialDelaySeconds: 10
+      timeoutSeconds: 10
+      periodSeconds: 5
+      failureThreshold: 10
     volumeMounts:
       - name: mysql-initdb
         mountPath: /docker-entrypoint-initdb.d
@@ -29,6 +40,18 @@ containers:
     env:
       MYSQL_HOST: "mysql"
       MYSQL_PORT: "3306"
+    livenessProbe:
+      httpGet:
+        path: "/healthcheck"
+        port: 3111
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    readinessProbe:
+      httpGet:
+        path: "/healthcheck"
+        port: 3111
+      initialDelaySeconds: 5
+      periodSeconds: 10
 
   web-app:
     replicas: 1
@@ -40,6 +63,18 @@ containers:
         targetPort: 4200
     env:
       PROXY_PATH: "http://web-api:3111"
+    livenessProbe:
+      httpGet:
+        path: "/healthcheck"
+        port: 4200
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    readinessProbe:
+      httpGet:
+        path: "/healthcheck"
+        port: 4200
+      initialDelaySeconds: 5
+      periodSeconds: 10
 
 configMaps:
   mysql-initdb-config:

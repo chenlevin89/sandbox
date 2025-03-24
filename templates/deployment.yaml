@@ -27,7 +27,14 @@ spec:
             {{- range $name, $envValue := $value.env }}
             - name: {{ $name }}
               value: {{ $envValue | quote }}
-            {{- end }}
+          {{- if $value.livenessProbe }}
+          livenessProbe:
+            {{- toYaml $value.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if $value.readinessProbe }}
+          readinessProbe:
+            {{- toYaml $value.readinessProbe | nindent 12 }}
+          {{- end }}
       {{- if $value.volumes }}
       volumes:
         {{- toYaml $value.volumes | nindent 8 }}
