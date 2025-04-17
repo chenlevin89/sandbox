@@ -40,7 +40,7 @@ containers:
     env:
       MYSQL_HOST: "mysql"
       MYSQL_PORT: "3306"
-      CUSTOM: "AS11"
+      CUSTOM: "AS112"
     livenessProbe:
       httpGet:
         path: "/healthcheck"
