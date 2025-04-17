@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: my-app-rollout
+spec:
+  replicas: 1
+  strategy:
+    canary:
+      steps:
+      - setWeight: 10
+      - pause:
+          duration: '5m'
+  workloadRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web-api
