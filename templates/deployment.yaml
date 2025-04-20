@@ -13,6 +13,14 @@ spec:
   selector:
     matchLabels:
       app: {{ $key }}
+  {{- if $value.rollout }}
+  strategy:
+    canary:
+      steps:
+      - setWeight: 10
+      - pause:
+          duration: '5m'
+  {{- end }}
   template:
     metadata:
       labels:
