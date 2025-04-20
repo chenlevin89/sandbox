@@ -30,6 +30,7 @@ containers:
           name: mysql-initdb-config
   
   web-api:
+    rollout: true
     replicas: 1
     image:
       repository: chenlevin/argocd-workshop-web-api
