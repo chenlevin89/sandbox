@@ -12,6 +12,9 @@ spec:
     metadata:
       labels:
         app: {{ $key }}
+      annotations:
+        argocd.argoproj.io/managed-by: argocd    
+        argoproj.io/managed-by-rollouts: "true"
     spec:
       containers:
         - name: {{ $key }}
